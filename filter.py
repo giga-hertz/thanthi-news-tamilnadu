@@ -9,7 +9,7 @@ FEED_URL = "https://www.dailythanthi.com/stories.rss"
 FILE_NAME = "feed.xml"
 MAX_ITEMS = 100
 
-# நீங்கள் ஃபில்டர் செய்ய விரும்பும் துல்லியமான வகை (Category)
+# Target category string inside <category>
 TARGET_CATEGORY = "தமிழக செய்திகள் (Tamilnadu)"
 
 # 2. Load existing accumulated feed if it exists, or create base RSS structure
@@ -49,10 +49,37 @@ if channel is not None:
         if item_id:
             items_dict[item_id] = (item, pub_date)
 
-# 3. Fetch remote feed and check exact category match
+# 3. Fetch remote feed
 try:
     req = urllib.request.Request(
         FEED_URL, 
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     )
-    with urllib.request.urlopen(
+    with urllib.request.urlopen(req) as response:
+        new_data = response.read()
+        
+    new_root = ET.fromstring(new_data)
+    
+    entries = new_root.findall(".//{http://www.w3.org/2005/Atom}entry") or new_root.findall(".//entry")
+    
+    for entry in entries:
+        category_matched = False
+        
+        # Scan category elements for term, label, or inner text matching TARGET_CATEGORY
+        for elem in list(entry):
+            if elem.tag.endswith("category"):
+                term = elem.attrib.get("term", "")
+                label = elem.attrib.get("label", "")
+                text = elem.text or ""
+                
+                target_lower = TARGET_CATEGORY.strip().lower()
+                if (target_lower in term.strip().lower() or 
+                    target_lower in label.strip().lower() or 
+                    target_lower in text.strip().lower()):
+                    category_matched = True
+                    break
+
+        if not category_matched:
+            continue
+
+        
