@@ -82,4 +82,24 @@ try:
         if not category_matched:
             continue
 
+        title = entry.findtext("{http://www.w3.org/2005/Atom}title") or entry.findtext("title") or ""
+        link_elem = entry.find("{http://www.w3.org/2005/Atom}link") or entry.find("link")
+        link = link_elem.attrib.get("href") if link_elem is not None and "href" in link_elem.attrib else (link_elem.text if link_elem is not None else "")
+        guid = entry.findtext("{http://www.w3.org/2005/Atom}id") or entry.findtext("id") or link
+        date_str = entry.findtext("{http://www.w3.org/2005/Atom}published") or entry.findtext("published") or entry.findtext("{http://www.w3.org/2005/Atom}updated") or entry.findtext("updated")
         
+        dt = parse_date(date_str)
+        
+        item_elem = ET.Element("item")
+        ET.SubElement(item_elem, "title").text = title.strip()
+        ET.SubElement(item_elem, "link").text = link.strip()
+        ET.SubElement(item_elem, "guid").text = guid.strip()
+        ET.SubElement(item_elem, "pubDate").text = dt.strftime("%a, %d %b %Y %H:%M:%S %Z")
+        
+        if guid or link:
+            items_dict[guid or link] = (item_elem, dt)
+
+except Exception as e:
+    print(f"Error fetching feed: {e}")
+
+# 4. Sort and Limit to 10
