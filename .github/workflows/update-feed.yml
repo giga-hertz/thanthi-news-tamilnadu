@@ -2,7 +2,7 @@ name: Update Daily Thanthi Filtered Feed
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Runs automatically every 30 minutes
+    - cron: '17,47 * * * *'  # Runs automatically every 30 minutes
   workflow_dispatch:        # Allows manual trigger via GitHub Actions tab
 
 permissions:
