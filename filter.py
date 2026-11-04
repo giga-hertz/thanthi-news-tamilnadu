@@ -18,11 +18,11 @@ if os.path.exists(FILE_NAME):
         root = tree.getroot()
         channel = root.find("channel")
     except Exception:
-        rss_str = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Daily Thanthi - Tamilnadu News</title></channel></rss>'
+        rss_str = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Daily Thanthi - Tamilnadu News</title></channel></rss>'
         root = ET.fromstring(rss_str)
         channel = root.find("channel")
 else:
-    rss_str = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Daily Thanthi - Tamilnadu News</title></channel></rss>'
+    rss_str = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Daily Thanthi - Tamilnadu News</title></channel></rss>'
     root = ET.fromstring(rss_str)
     channel = root.find("channel")
 
@@ -89,4 +89,51 @@ try:
         
         title, link, guid, date_str, content_text = "", "", "", "", ""
         
-        #
+        for child in entry.iter():
+            tag_name = child.tag.split('}')[-1].lower()
+            if tag_name == "title" and not title:
+                title = child.text or ""
+            elif tag_name == "link" and not link:
+                link = child.attrib.get("href") or child.text or ""
+            elif tag_name in ("id", "guid") and not guid:
+                guid = child.text or ""
+            elif tag_name in ("published", "updated", "pubdate") and not date_str:
+                date_str = child.text or ""
+            elif tag_name in ("content", "summary", "description") and not content_text:
+                content_text = child.text or ""
+
+        if not guid:
+            guid = link
+
+        dt = parse_date(date_str)
+        
+        item_elem = ET.Element("item")
+        ET.SubElement(item_elem, "title").text = title.strip()
+        ET.SubElement(item_elem, "link").text = link.strip()
+        ET.SubElement(item_elem, "guid").text = guid.strip()
+        ET.SubElement(item_elem, "pubDate").text = dt.strftime("%a, %d %b %Y %H:%M:%S %Z")
+        
+        if content_text:
+            ET.SubElement(item_elem, "description").text = content_text.strip()
+        
+        if guid or link:
+            items_dict[guid or link] = (item_elem, dt)
+
+    print(f"Matched {matched_count} items with full content.")
+
+except Exception as e:
+    print(f"Error fetching feed: {e}")
+
+sorted_items = sorted(items_dict.values(), key=lambda x: x[1], reverse=True)
+limited_items = sorted_items[:MAX_ITEMS]
+
+if channel is not None:
+    for item in channel.findall("item"):
+        channel.remove(item)
+
+    for item, dt in limited_items:
+        channel.append(item)
+
+tree = ET.ElementTree(root)
+tree.write(FILE_NAME, encoding="utf-8", xml_declaration=True)
+print(f"Successfully wrote {len(limited_items)} items to {FILE_NAME}.")
