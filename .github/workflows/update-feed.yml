@@ -1,30 +1,32 @@
-name: Accumulate RSS Feed
+name: Update Daily Thanthi Filtered Feed
 
 on:
   schedule:
-    - cron: '0 * * * *' # Runs automatically every 1 hour
-  workflow_dispatch: # Allows you to run it manually with a click
+    - cron: '0 */3 * * *'  # Runs automatically every 3 hours
+  workflow_dispatch:       # Allows manual trigger via GitHub Actions tab
+
+permissions:
+  contents: write
 
 jobs:
-  update-feed:
+  filter-feed:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+
     steps:
-      - name: Checkout Repository
+      - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
-      - name: Run Accumulator Script
-        run: python filter.py
+      - name: Run feed filter
+        run: python filter_feed.py
 
-      - name: Commit and Push Changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Auto-update RSS feed (capped at 100 items)"
-          file_pattern: feed.xml
-                                                                                                                                  
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add feed.xml
+          git diff --staged --quiet || (git commit -m "chore: update feed.xml" && git push)
