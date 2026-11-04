@@ -7,7 +7,7 @@ import xml.dom.minidom as minidom
 RSS_URL = "https://www.dailythanthi.com/stories.rss"
 TARGET_CATEGORY = "தமிழக செய்திகள் (Tamilnadu)"
 OUTPUT_FILE = "feed.xml"
-MAX_ITEMS = 200
+MAX_ITEMS = 400
 
 def get_text_content(element):
     """Extract text or CDATA node contents cleanly."""
