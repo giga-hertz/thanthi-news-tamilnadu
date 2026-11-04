@@ -5,13 +5,12 @@ from email.utils import parsedate_to_datetime
 from datetime import datetime, timezone
 
 # 1. Configuration
-FEED_URL = "https://www.dailythanthi.com/stories.rss"  # <-- Put your raw source RSS feed URL here
+FEED_URL = "https://www.dailythanthi.com/stories.rss"
 FILE_NAME = "feed.xml"
 MAX_ITEMS = 100
 
-# 🌟 PUT THE CATEGORIES YOU WANT TO KEEP HERE (case-insensitive)
-ALLOWED_CATEGORIES = {"தமிழக செய்திகள் (Tamilnadu)"} 
-# Leave it empty set if you want to allow everything: ALLOWED_CATEGORIES = set()
+# 🌟 PUT YOUR DESIRED CATEGORIES HERE (leave empty if you want all items)
+ALLOWED_CATEGORIES = set()  # Example: {"tamilnadu", "cinema"}
 
 # 2. Load existing accumulated feed if it exists, or create a new base structure
 if os.path.exists(FILE_NAME):
@@ -19,7 +18,7 @@ if os.path.exists(FILE_NAME):
     root = tree.getroot()
     channel = root.find("channel")
 else:
-    rss_str = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>My Filtered Feed</title></channel></rss>'
+    rss_str = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Daily Thanthi Filtered Feed</title></channel></rss>'
     root = ET.fromstring(rss_str)
     channel = root.find("channel")
 
@@ -40,21 +39,25 @@ for item in channel.findall("item"):
     if item_id:
         items_dict[item_id] = (item, parse_item_date(item))
 
-# 3. Fetch the latest feed data and apply category filter
+# 3. Fetch the latest feed data using a browser User-Agent header
 try:
-    req = urllib.request.urlopen(FEED_URL)
-    new_data = req.read()
+    req = urllib.request.Request(
+        FEED_URL, 
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    )
+    with urllib.request.urlopen(req) as response:
+        new_data = response.read()
+        
     new_root = ET.fromstring(new_data)
     new_channel = new_root.find("channel")
     
     if new_channel is not None:
         for item in new_channel.findall("item"):
-            # Extract categories from the item
-            item_categories = {c.text.strip().lower() for c in item.findall("category") if c.text}
-            
-            # Filter check: If categories are specified, skip items that don't match
-            if ALLOWED_CATEGORIES and not item_categories.intersection(ALLOWED_CATEGORIES):
-                continue
+            # Optional category check
+            if ALLOWED_CATEGORIES:
+                item_categories = {c.text.strip().lower() for c in item.findall("category") if c.text}
+                if not item_categories.intersection(ALLOWED_CATEGORIES):
+                    continue
 
             item_id = item.findtext("guid") or item.findtext("link")
             if item_id:
