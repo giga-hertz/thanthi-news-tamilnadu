@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 FEED_URL = "https://www.dailythanthi.com/stories.rss"
 FILE_NAME = "feed.xml"
 MAX_ITEMS = 100
-ALLOWED_CATEGORIES = set()  # Leave empty to keep all categories
+ALLOWED_CATEGORIES = {"தமிழக செய்திகள் (Tamilnadu)"}  # Leave empty to keep all categories
 
 # 2. Load existing accumulated feed if it exists, or create a new base structure
 if os.path.exists(FILE_NAME):
