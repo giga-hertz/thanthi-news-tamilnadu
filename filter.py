@@ -101,4 +101,4 @@ for item, dt in limited_items:
 
 # 6. Save the updated XML back to the file
 tree = ET.ElementTree(root)
-tree.write(FILE_NAME, encoding="utf-8", xml_directive=False)
+tree.write(FILE_NAME, encoding="utf-8", xml_declaration=True)
