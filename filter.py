@@ -10,7 +10,7 @@ FILE_NAME = "feed.xml"
 MAX_ITEMS = 100
 
 # 🌟 PUT YOUR DESIRED CATEGORIES HERE (leave empty if you want all items)
-ALLOWED_CATEGORIES = set()  # Example: {"tamilnadu", "cinema"}
+ALLOWED_CATEGORIES = {"தமிழக செய்திகள் (Tamilnadu)"}  # Example: {"tamilnadu", "cinema"}
 
 # 2. Load existing accumulated feed if it exists, or create a new base structure
 if os.path.exists(FILE_NAME):
