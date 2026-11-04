@@ -18,11 +18,11 @@ if os.path.exists(FILE_NAME):
         root = tree.getroot()
         channel = root.find("channel")
     except Exception:
-        rss_str = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Daily Thanthi - Tamilnadu News</title></channel></rss>'
+        rss_str = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Daily Thanthi - Tamilnadu News</title></channel></rss>'
         root = ET.fromstring(rss_str)
         channel = root.find("channel")
 else:
-    rss_str = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Daily Thanthi - Tamilnadu News</title></channel></rss>'
+    rss_str = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Daily Thanthi - Tamilnadu News</title></channel></rss>'
     root = ET.fromstring(rss_str)
     channel = root.find("channel")
 
@@ -89,6 +89,7 @@ try:
         
         title, link, guid, date_str, content_text = "", "", "", "", ""
         
+        # Safely extract title, link, date, and full content/summary
         for child in entry.iter():
             tag_name = child.tag.split('}')[-1].lower()
             if tag_name == "title" and not title:
@@ -113,6 +114,7 @@ try:
         ET.SubElement(item_elem, "guid").text = guid.strip()
         ET.SubElement(item_elem, "pubDate").text = dt.strftime("%a, %d %b %Y %H:%M:%S %Z")
         
+        # Add full article content to the generated feed item
         if content_text:
             ET.SubElement(item_elem, "description").text = content_text.strip()
         
