@@ -6,7 +6,7 @@ import xml.dom.minidom as minidom
 
 RSS_URL = "https://www.dailythanthi.com/stories.rss"
 TARGET_CATEGORY = "தமிழக செய்திகள் (Tamilnadu)"
-OUTPUT_FILE = "feed.xml"
+OUTPUT_FILE = "myfeed.xml"
 MAX_ITEMS = 400
 
 def get_text_content(element):
@@ -62,7 +62,7 @@ def main():
     fetched_channel = fetched_dom.getElementsByTagName("channel")[0]
     fetched_items = list(fetched_channel.getElementsByTagName("item"))
 
-    # Determine whether feed.xml already exists
+    # Determine whether myfeed.xml already exists
     if os.path.exists(OUTPUT_FILE) and os.path.getsize(OUTPUT_FILE) > 0:
         try:
             dom = minidom.parse(OUTPUT_FILE)
