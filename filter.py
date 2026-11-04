@@ -9,8 +9,7 @@ FEED_URL = "https://www.dailythanthi.com/stories.rss"
 FILE_NAME = "feed.xml"
 MAX_ITEMS = 100
 
-# 🌟 PUT THE CATEGORIES YOU WANT TO KEEP HERE (lowercase)
-# If left empty (set()), all categories are allowed.
+# Set your category here (or leave set() empty temporarily if you want to test pulling everything)
 ALLOWED_CATEGORIES = {"தமிழக செய்திகள் (Tamilnadu)"} 
 
 # 2. Load existing accumulated feed if it exists, or create a new base structure
@@ -44,7 +43,7 @@ for item in channel.findall("item"):
     if item_id:
         items_dict[item_id] = (item, pub_date)
 
-# 3. Fetch and parse remote feed with active category filtering
+# 3. Fetch and parse remote feed with robust category scanning
 try:
     req = urllib.request.Request(
         FEED_URL, 
@@ -54,21 +53,29 @@ try:
         new_data = response.read()
         
     new_root = ET.fromstring(new_data)
-    entries = new_root.findall(".//{http://www.w3.org/2005/Atom}entry") or new_root.findall("entry")
     
-    for entry in entries:
-        # Extract categories from the Atom entry
-        categories = []
-        for cat in entry.findall("{http://www.w3.org/2005/Atom}category") + entry.findall("category"):
-            term = cat.attrib.get("term") or cat.text
-            if term:
-                categories.append(term.strip().lower())
+    entries = new_root.findall(".//{http://www.w3.org/2005/Atom}entry")
+    if not entries:
+        entries = new_root.findall(".//entry")
         
-        # 🛑 ACTIVE FILTER CHECK: Skip if ALLOWED_CATEGORIES has items and none match
+    print(f"Total entries found in feed: {len(entries)}")
+
+    for entry in entries:
+        # Robustly extract categories across namespaces
+        categories = []
+        for elem in list(entry):
+            if elem.tag.endswith("category"):
+                term = elem.attrib.get("term") or elem.text
+                if term:
+                    categories.append(term.strip().lower())
+        
+        title = entry.findtext("{http://www.w3.org/2005/Atom}title") or entry.findtext("title") or ""
+        print(f"Article: '{title.strip()}' | Found Categories: {categories}")
+
+        # Filter check
         if ALLOWED_CATEGORIES and not any(cat in ALLOWED_CATEGORIES for cat in categories):
             continue
 
-        title = entry.findtext("{http://www.w3.org/2005/Atom}title") or entry.findtext("title") or ""
         link_elem = entry.find("{http://www.w3.org/2005/Atom}link") or entry.find("link")
         link = link_elem.attrib.get("href") if link_elem is not None and "href" in link_elem.attrib else (link_elem.text if link_elem is not None else "")
         guid = entry.findtext("{http://www.w3.org/2005/Atom}id") or entry.findtext("id") or link
