@@ -1,0 +1,30 @@
+name: Accumulate RSS Feed
+
+on:
+  schedule:
+      - cron: '0 * * * *' # Runs automatically every 1 hour
+        workflow_dispatch: # Allows you to run it manually with a click
+
+        jobs:
+          update-feed:
+              runs-on: ubuntu-latest
+                  permissions:
+                        contents: write
+                            steps:
+                                  - name: Checkout Repository
+                                          uses: actions/checkout@v4
+
+                                                - name: Set up Python
+                                                        uses: actions/setup-python@v5
+                                                                with:
+                                                                          python-version: '3.10'
+
+                                                                                - name: Run Accumulator Script
+                                                                                        run: python filter.py
+
+                                                                                              - name: Commit and Push Changes
+                                                                                                      uses: stefanzweifel/git-auto-commit-action@v5
+                                                                                                              with:
+                                                                                                                        commit_message: "Auto-update RSS feed (capped at 100 items)"
+                                                                                                                                  file_pattern: feed.xml
+                                                                                                                                  
