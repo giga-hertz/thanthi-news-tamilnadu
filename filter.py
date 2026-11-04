@@ -5,12 +5,12 @@ from email.utils import parsedate_to_datetime
 from datetime import datetime, timezone
 
 # 1. Configuration
-FEED_URL = "https://example.com/rss.xml"  # <-- Put your raw source RSS feed URL here
+FEED_URL = "https://www.dailythanthi.com/stories.rss"  # <-- Put your raw source RSS feed URL here
 FILE_NAME = "feed.xml"
 MAX_ITEMS = 100
 
 # 🌟 PUT THE CATEGORIES YOU WANT TO KEEP HERE (case-insensitive)
-ALLOWED_CATEGORIES = {"tech", "software", "guides"} 
+ALLOWED_CATEGORIES = {"தமிழக செய்திகள் (Tamilnadu)"} 
 # Leave it empty set if you want to allow everything: ALLOWED_CATEGORIES = set()
 
 # 2. Load existing accumulated feed if it exists, or create a new base structure
