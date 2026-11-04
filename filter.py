@@ -8,9 +8,7 @@ from datetime import datetime, timezone
 FEED_URL = "https://www.dailythanthi.com/stories.rss"
 FILE_NAME = "feed.xml"
 MAX_ITEMS = 100
-
-# 🌟 PUT YOUR DESIRED CATEGORIES HERE (leave empty if you want all items)
-ALLOWED_CATEGORIES = {"தமிழக செய்திகள் (Tamilnadu)"}  # Example: {"tamilnadu", "cinema"}
+ALLOWED_CATEGORIES = set()  # Leave empty to keep all categories
 
 # 2. Load existing accumulated feed if it exists, or create a new base structure
 if os.path.exists(FILE_NAME):
@@ -24,22 +22,26 @@ else:
 
 items_dict = {}
 
-def parse_item_date(item):
-    pub_date_text = item.findtext("pubDate")
-    if pub_date_text:
+def parse_date(date_str):
+    if not date_str:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    try:
+        return parsedate_to_datetime(date_str)
+    except Exception:
         try:
-            return parsedate_to_datetime(pub_date_text)
+            return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
         except Exception:
             pass
     return datetime.min.replace(tzinfo=timezone.utc)
 
-# Load existing items into dictionary
+# Load existing items from local feed.xml
 for item in channel.findall("item"):
     item_id = item.findtext("guid") or item.findtext("link")
+    pub_date = parse_date(item.findtext("pubDate"))
     if item_id:
-        items_dict[item_id] = (item, parse_item_date(item))
+        items_dict[item_id] = (item, pub_date)
 
-# 3. Fetch the latest feed data using a browser User-Agent header
+# 3. Fetch and parse remote feed (Supports Atom <entry> and RSS <item>)
 try:
     req = urllib.request.Request(
         FEED_URL, 
@@ -49,19 +51,40 @@ try:
         new_data = response.read()
         
     new_root = ET.fromstring(new_data)
-    new_channel = new_root.find("channel")
     
-    if new_channel is not None:
-        for item in new_channel.findall("item"):
-            # Optional category check
-            if ALLOWED_CATEGORIES:
-                item_categories = {c.text.strip().lower() for c in item.findall("category") if c.text}
-                if not item_categories.intersection(ALLOWED_CATEGORIES):
-                    continue
-
+    # Check for Atom entries or standard RSS items
+    entries = new_root.findall(".//{http://www.w3.org/2005/Atom}entry") or new_root.findall("entry")
+    items = new_root.findall(".//item")
+    
+    if entries:
+        for entry in entries:
+            title = entry.findtext("{http://www.w3.org/2005/Atom}title") or entry.findtext("title") or ""
+            
+            link_elem = entry.find("{http://www.w3.org/2005/Atom}link") or entry.find("link")
+            link = link_elem.attrib.get("href") if link_elem is not None and "href" in link_elem.attrib else (link_elem.text if link_elem is not None else "")
+            
+            guid = entry.findtext("{http://www.w3.org/2005/Atom}id") or entry.findtext("id") or link
+            date_str = entry.findtext("{http://www.w3.org/2005/Atom}published") or entry.findtext("published") or entry.findtext("{http://www.w3.org/2005/Atom}updated") or entry.findtext("updated")
+            
+            dt = parse_date(date_str)
+            
+            # Create a standard RSS item format for internal storage
+            item_elem = ET.Element("item")
+            ET.SubElement(item_elem, "title").text = title.strip()
+            ET.SubElement(item_elem, "link").text = link.strip()
+            ET.SubElement(item_elem, "guid").text = guid.strip()
+            ET.SubElement(item_elem, "pubDate").text = dt.strftime("%a, %d %b %Y %H:%M:%S %Z")
+            
+            if guid or link:
+                items_dict[guid or link] = (item_elem, dt)
+                
+    elif items:
+        for item in items:
             item_id = item.findtext("guid") or item.findtext("link")
+            dt = parse_date(item.findtext("pubDate"))
             if item_id:
-                items_dict[item_id] = (item, parse_item_date(item))
+                items_dict[item_id] = (item, dt)
+
 except Exception as e:
     print(f"Error fetching feed: {e}")
 
