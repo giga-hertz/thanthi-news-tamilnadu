@@ -8,7 +8,10 @@ from datetime import datetime, timezone
 FEED_URL = "https://www.dailythanthi.com/stories.rss"
 FILE_NAME = "feed.xml"
 MAX_ITEMS = 100
-ALLOWED_CATEGORIES = {"தமிழக செய்திகள் (Tamilnadu)"}  # Leave empty to keep all categories
+
+# 🌟 PUT THE CATEGORIES YOU WANT TO KEEP HERE (lowercase)
+# If left empty (set()), all categories are allowed.
+ALLOWED_CATEGORIES = {"தமிழக செய்திகள் (Tamilnadu)"} 
 
 # 2. Load existing accumulated feed if it exists, or create a new base structure
 if os.path.exists(FILE_NAME):
@@ -41,7 +44,7 @@ for item in channel.findall("item"):
     if item_id:
         items_dict[item_id] = (item, pub_date)
 
-# 3. Fetch and parse remote feed (Supports Atom <entry> and RSS <item>)
+# 3. Fetch and parse remote feed with active category filtering
 try:
     req = urllib.request.Request(
         FEED_URL, 
@@ -51,39 +54,36 @@ try:
         new_data = response.read()
         
     new_root = ET.fromstring(new_data)
-    
-    # Check for Atom entries or standard RSS items
     entries = new_root.findall(".//{http://www.w3.org/2005/Atom}entry") or new_root.findall("entry")
-    items = new_root.findall(".//item")
     
-    if entries:
-        for entry in entries:
-            title = entry.findtext("{http://www.w3.org/2005/Atom}title") or entry.findtext("title") or ""
-            
-            link_elem = entry.find("{http://www.w3.org/2005/Atom}link") or entry.find("link")
-            link = link_elem.attrib.get("href") if link_elem is not None and "href" in link_elem.attrib else (link_elem.text if link_elem is not None else "")
-            
-            guid = entry.findtext("{http://www.w3.org/2005/Atom}id") or entry.findtext("id") or link
-            date_str = entry.findtext("{http://www.w3.org/2005/Atom}published") or entry.findtext("published") or entry.findtext("{http://www.w3.org/2005/Atom}updated") or entry.findtext("updated")
-            
-            dt = parse_date(date_str)
-            
-            # Create a standard RSS item format for internal storage
-            item_elem = ET.Element("item")
-            ET.SubElement(item_elem, "title").text = title.strip()
-            ET.SubElement(item_elem, "link").text = link.strip()
-            ET.SubElement(item_elem, "guid").text = guid.strip()
-            ET.SubElement(item_elem, "pubDate").text = dt.strftime("%a, %d %b %Y %H:%M:%S %Z")
-            
-            if guid or link:
-                items_dict[guid or link] = (item_elem, dt)
-                
-    elif items:
-        for item in items:
-            item_id = item.findtext("guid") or item.findtext("link")
-            dt = parse_date(item.findtext("pubDate"))
-            if item_id:
-                items_dict[item_id] = (item, dt)
+    for entry in entries:
+        # Extract categories from the Atom entry
+        categories = []
+        for cat in entry.findall("{http://www.w3.org/2005/Atom}category") + entry.findall("category"):
+            term = cat.attrib.get("term") or cat.text
+            if term:
+                categories.append(term.strip().lower())
+        
+        # 🛑 ACTIVE FILTER CHECK: Skip if ALLOWED_CATEGORIES has items and none match
+        if ALLOWED_CATEGORIES and not any(cat in ALLOWED_CATEGORIES for cat in categories):
+            continue
+
+        title = entry.findtext("{http://www.w3.org/2005/Atom}title") or entry.findtext("title") or ""
+        link_elem = entry.find("{http://www.w3.org/2005/Atom}link") or entry.find("link")
+        link = link_elem.attrib.get("href") if link_elem is not None and "href" in link_elem.attrib else (link_elem.text if link_elem is not None else "")
+        guid = entry.findtext("{http://www.w3.org/2005/Atom}id") or entry.findtext("id") or link
+        date_str = entry.findtext("{http://www.w3.org/2005/Atom}published") or entry.findtext("published") or entry.findtext("{http://www.w3.org/2005/Atom}updated") or entry.findtext("updated")
+        
+        dt = parse_date(date_str)
+        
+        item_elem = ET.Element("item")
+        ET.SubElement(item_elem, "title").text = title.strip()
+        ET.SubElement(item_elem, "link").text = link.strip()
+        ET.SubElement(item_elem, "guid").text = guid.strip()
+        ET.SubElement(item_elem, "pubDate").text = dt.strftime("%a, %d %b %Y %H:%M:%S %Z")
+        
+        if guid or link:
+            items_dict[guid or link] = (item_elem, dt)
 
 except Exception as e:
     print(f"Error fetching feed: {e}")
@@ -101,4 +101,4 @@ for item, dt in limited_items:
 
 # 6. Save the updated XML back to the file
 tree = ET.ElementTree(root)
-tree.write(FILE_NAME, encoding="utf-8", xml_declaration=True)
+tree.write(FILE_NAME, encoding="utf-8", xml_directive=False)
